@@ -14,6 +14,7 @@ import { SeedModule } from './modules/seed/seed.module';
     ConfigModule.forRoot({
       load: [AppConfig],
       validationSchema: JoiValidationSchema,
+      isGlobal: true,
     }),
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'public'),
