@@ -1,17 +1,24 @@
 /* eslint-disable prettier/prettier */
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { isValidObjectId, Model } from 'mongoose';
+import { PaginationQueryDto } from 'src/common/dtos/pagination-query.dto';
 import { CreatePokemonDto } from './dto/create-pokemon.dto';
 import { UpdatePokemonDto } from './dto/update-pokemon.dto';
 import { Pokemon } from './entities/pokemon.entity';
 
 @Injectable()
 export class PokemonService {
+  private defaultLimit: number;
+
   constructor(
     @InjectModel(Pokemon.name)
     private readonly pokemonModel: Model<Pokemon>,
-  ) {}
+    private readonly configService: ConfigService
+  ) {
+    this.defaultLimit = this.configService.get<number>('defaultLimit');
+  }
 
   async create(createPokemonDto: CreatePokemonDto) {
     try {
@@ -22,8 +29,31 @@ export class PokemonService {
     }
   }
 
-  findAll() {
-    return `This action returns all pokemon`;
+  async createMany(pokemons: { no: number; name: string; }[], options = {}) {
+    try {
+      const result = await this.pokemonModel.insertMany(pokemons, options);
+      console.log(`${result.length} documents were inserted`);
+    } catch (err) {
+        if (err.code === 11000) {
+            console.log('Duplicate key error detected. Some documents were not inserted.');
+        } else {
+            throw err;
+        }
+    }
+
+  }
+
+  async findAll(paginationQuery: PaginationQueryDto) {
+    const { page, limit = this.defaultLimit } = paginationQuery;
+
+    const skip = (page - 1) * limit;
+
+    return await this.pokemonModel
+      .find()
+      .skip(skip)
+      .limit(limit)
+      .select(['name', 'no'])
+      .exec();
   }
 
   async findOne(search_param: string) {
